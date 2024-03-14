@@ -189,30 +189,31 @@ def affineKryptoanalizaJawna():
     success = False
     extra = open("extra.txt", "r").read()
     for key in range(1, len(alphabet)):
-        for factor in range(1, len(alphabet)):
-            if math.gcd(factor, len(alphabet)) == 1:
-                decrypted = ""
-                for i in range(len(crypto)):
-                    for j in range(len(alphabet)):
-                        if crypto[i] == " ":
-                            decrypted += " "
-                            break
-                        elif crypto[i] == alphabet[j]:
-                            factor_inv = pow(factor, -1, len(alphabet))
-                            decrypted += alphabet[(factor_inv * (j - key)) % len(alphabet)]
-                            break
-                # print(decrypted)
-        if extra in decrypted:
-            success = True
-            print(f"Udało się odnaleźć klucz - {key} - oraz współczynnik - {factor}! Odszyfrowany tekst został zapisany w pliku decrypt.txt.\n"
-                  "Klucz oraz współczynnik zostały zapisane w pliku key-new.txt")
-            with open("decrypt.txt", "w") as decryptTxt:
-                decryptTxt.write(decrypted)
-            with open("key-new.txt", "w") as keyTxt:
-                keyTxt.write(str(key), " ", str(factor))
-            break
-    # if success == False:
-    #     raise ValueError("Nie udało się odnaleźć klucza.")
+        if success == False:
+            for factor in range(1, len(alphabet)):
+                if math.gcd(factor, len(alphabet)) == 1:
+                    decrypted = ""
+                    for i in range(len(crypto)):
+                        for j in range(len(alphabet)):
+                            if crypto[i] == " ":
+                                decrypted += " "
+                                break
+                            elif crypto[i] == alphabet[j]:
+                                factor_inv = pow(factor, -1, len(alphabet))
+                                decrypted += alphabet[(factor_inv * (j - key)) % len(alphabet)]
+                                break
+                    print(decrypted)
+                if extra in decrypted:
+                    success = True
+                    print(f"Udało się odnaleźć klucz - {key} - oraz współczynnik - {factor}! Odszyfrowany tekst został zapisany w pliku decrypt.txt.\n"
+                        "Klucz oraz współczynnik zostały zapisane w pliku key-new.txt")
+                    with open("decrypt.txt", "w") as decryptTxt:
+                        decryptTxt.write(decrypted)
+                    with open("key-new.txt", "w") as keyTxt:
+                        keyTxt.write(str(key) + " " + str(factor))
+                    break
+    if success == False:
+        raise ValueError("Nie udało się odnaleźć klucza.")
 
         
 
