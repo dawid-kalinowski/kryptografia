@@ -2,11 +2,10 @@ import sys
 import math
 # alphabet = ['a', 'ą', 'b', 'c', 'ć', 'd', 'e', 'ę', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'ł', 'm', 'n', 'ń', 'o', 'ó', 'p', 'r', 's', 'ś', 't', 'u', 'w', 'y', 'z', 'ź', 'ż']
 alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
-crypto = open("crypto.txt", "r").read()
-plain = open("plain.txt", "r").read().lower()
 
 
 def cezarCrypt():
+    plain = open("plain.txt", "r").read().lower()
     try:
         tryKey = int(open("key.txt", "r").read().split()[0])
         if tryKey < 0:
@@ -33,6 +32,7 @@ def cezarCrypt():
 
 
 def affineCrypt():
+    plain = open("plain.txt", "r").read().lower()
     try:
         tryKey = int(open("key.txt", "r").read().split()[0]) 
         factor = int(open("key.txt", "r").read().split()[1])
@@ -60,6 +60,7 @@ def affineCrypt():
     print(f"Tekst został pomyślnie zaszyfrowany szyfrem alfinicznym o kluczu {key} oraz współczynniku {factor} w pliku crypto.txt")
 
 def cezarDecrypt():
+    crypto = open("crypto.txt", "r").read()
     try:
         tryKey = int(open("key.txt", "r").read().split()[0]) 
         if tryKey < 0:
@@ -85,6 +86,7 @@ def cezarDecrypt():
     print(f"Tekst został pomyślnie rozszyfrowany. Tekst jawny został zapisany w pliku decrypt.txt")
 
 def affineDecrypt():
+    crypto = open("crypto.txt", "r").read()
     try:
         tryKey = int(open("key.txt", "r").read().split()[0]) 
         factor = int(open("key.txt", "r").read().split()[1])
@@ -117,6 +119,7 @@ def affineDecrypt():
 
 
 def cezarKryptoanaliza():
+    crypto = open("crypto.txt", "r").read()
     with open("decrypt.txt", "w") as decryptTxt:
         decryptTxt.write("")
     for key in range(1, len(alphabet)):    
@@ -138,6 +141,7 @@ def cezarKryptoanaliza():
 
 
 def affineKryptoanaliza():
+    crypto = open("crypto.txt", "r").read()
     with open("decrypt.txt", "w") as decryptTxt:
         decryptTxt.write("")
         
@@ -159,6 +163,7 @@ def affineKryptoanaliza():
     print(f"Kryptoanaliza szyfru alfinicznego zakończona pomyślnie. Rozszyfrowane teksty znajdują się w pliku decrypt.txt")
 
 def cezarKryptoanalizaJawna():
+    crypto = open("crypto.txt", "r").read()
     success = False
     extra = open("extra.txt", "r").read()
     for key in range(1, len(alphabet)):    
@@ -186,6 +191,7 @@ def cezarKryptoanalizaJawna():
         raise ValueError("Nie udało się odnaleźć klucza.")
     
 def affineKryptoanalizaJawna():
+    crypto = open("crypto.txt", "r").read()
     success = False
     extra = open("extra.txt", "r").read()
     for key in range(1, len(alphabet)):
@@ -202,7 +208,6 @@ def affineKryptoanalizaJawna():
                                 factor_inv = pow(factor, -1, len(alphabet))
                                 decrypted += alphabet[(factor_inv * (j - key)) % len(alphabet)]
                                 break
-                    print(decrypted)
                 if extra in decrypted:
                     success = True
                     print(f"Udało się odnaleźć klucz - {key} - oraz współczynnik - {factor}! Odszyfrowany tekst został zapisany w pliku decrypt.txt.\n"
