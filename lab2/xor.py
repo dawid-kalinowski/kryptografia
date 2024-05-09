@@ -1,66 +1,103 @@
-import argparse
+import sys
+from typing import List
 
-def prepare_text(input_file, output_file, line_length):
-    with open(input_file, 'r') as f:
-        text = f.read()
-        prepared_text = ''.join(format(ord(c), '08b') for c in text)
-        prepared_lines = [prepared_text[i:i+line_length] for i in range(0, len(prepared_text), line_length)]
 
-        with open(output_file, 'w') as output:
-            for line in prepared_lines:
-                output.write(line + '\n')
-    print("Text prepared successfully.")
+def prepare():
+    with open("orig.txt", 'r') as orig:
+        text = orig.read().replace('\n', ' ').strip().lower()
+        text = ''.join(char for char in text if char.isalpha() or char == ' ')
+        with open("plain.txt", 'w') as plain:
+            for i in range(0, len(text), 64):
+                line = text[i:i+64]
+                if len(line) < 64:
+                    line += 'a' * (64 - len(line))
+                plain.write(line + '\n')
+    print("Przygotowano tekst.")
 
-def encrypt(input_file, key_file, output_file):
-    with open(input_file, 'r') as f:
-        plain_text = f.read()
-    with open(key_file, 'r') as f:
-        key = f.read()
 
-    encrypted_text = ''.join(chr(ord(plain_text[i]) ^ ord(key[i % len(key)])) for i in range(len(plain_text)))
-    with open(output_file, 'w') as output:
-        output.write(encrypted_text)
-    print("Text encrypted successfully.")
+def encrypt(block_size: int = 64) -> None:
+    with open("plain.txt", "r") as file_plain:
+        plaintext = [line.rstrip("\n") for line in file_plain.readlines()]
+        
+    with open("key.txt", "r") as file_key:
+        key = file_key.read()
+        
+    with open("crypto.txt", "w") as file_crypto:
+        for line in plaintext:
+            for i in range(block_size):
+                file_crypto.write(chr(ord(line[i]) ^ ord(key[i])))
+    print("Zaszyfrowano tekst.")
 
-def cryptoanalysis(crypto_file, output_file):
-    with open(crypto_file, 'r') as f:
-        crypto_text = f.readlines()
 
-    space_positions = []
-    for i in range(len(crypto_text[0])):
-        count_ones = sum(1 for line in crypto_text if line[i] == '1')
-        if count_ones > len(crypto_text) / 2:
-            space_positions.append(i)
 
-    decrypted_text = []
-    for line in crypto_text:
-        decrypted_line = ''
-        for i in range(len(line)):
-            if i in space_positions:
-                decrypted_line += ' '
-            else:
-                decrypted_line += '_'
-        decrypted_text.append(decrypted_line)
+def crypto(lines: List[str]) -> List[str]:
+    columns = [[line[i] for line in lines] for i in range(len(lines[0]))]
+    decrypted_columns = []
 
-    with open(output_file, 'w') as output:
-        for line in decrypted_text:
-            output.write(line + '\n')
-    print("Cryptoanalysis completed successfully.")
+    for col in columns:
+        line = ["" for _ in range(len(col))]
+        differences = [ord(col[i]) ^ ord(col[i+1]) for i in range(len(col)-1)]
+
+        i = 0
+        while i <= len(differences):
+            try:
+                if differences[i] >> 5 == 0 and differences[i+1] >> 5 == 2 and differences[i+2] >> 5 == 2:
+                    line[i] = chr(differences[i] ^ differences[i+1] ^ 0b00100000)
+                    line[i+1] = chr(0b00100000 ^ differences[i+1])
+                    line[i+2] = chr(0b00100000 ^ differences[i+2])
+                    i += 3
+                elif differences[i] >> 5 == 2 and differences[i+1] >> 5 == 2 and differences[i+2] >> 5 == 0 and i < len(line) - 2:
+                    line[i] = chr(0b00100000 ^ differences[i])
+                    line[i+1] = chr(0b00100000)
+                    line[i+2] = chr(0b00100000 ^ differences[i+1])
+                    i += 3
+                elif differences[i] == differences[i+2] and differences[i] >> 5 == 0 and differences[i+1] >> 5 == 2:
+                    line[i] = chr(0b00100000)
+                    line[i+1] = chr(differences[i+1] ^ 0b00100000)
+                    line[i+2] = chr(0b00100000)
+                    i += 3
+                elif differences[i] >> 5 == 0 and differences[i+1] >> 5 == 2 and differences[i+2] >> 5 == 0:
+                    line[i] = chr(differences[i] ^ differences[i+1] ^ 0b00100000)
+                    line[i+1] = chr(0b00100000 ^ differences[i+1])
+                    line[i+2] = chr(0b00100000)
+                    i += 3
+                elif differences[i] >> 5 == 2 and differences[i+1] >> 5 == 0 and differences[i+2] >> 5 == 0:
+                    line[i] = chr(0b00100000)
+                    line[i+1] = chr(differences[i] ^ 0b00100000)
+                    line[i+2] = chr(differences[i+1] ^ differences[i] ^ 0b00100000)
+                    i += 1
+                else:
+                    line[i] = "_"
+                    i += 1
+            except IndexError:
+                line[i] = "_"
+                i += 1
+
+        decrypted_columns.append("".join(line))
+
+    decrypted_lines = ["".join([col[i] for col in decrypted_columns]) for i in range(len(decrypted_columns[0]))]
+    return decrypted_lines
+
+
+def cryptoanalysis(block_size: int = 64) -> None:
+    with open("crypto.txt", "r") as f:
+        crypto_text = f.read()
+    blocks = [crypto_text[i:i+block_size] for i in range(0, len(crypto_text), block_size)]
+    with open("decrypt.txt", "w") as f:
+        f.write("\n".join(crypto(blocks)))
+    print("Kryptoanaliza wykonana.")
+
 
 def main():
-    parser = argparse.ArgumentParser(description="XOR encryption and cryptoanalysis tool")
-    parser.add_argument("-p", "--prepare", metavar="line_length", type=int, default=64, help="Prepare text for encryption")
-    parser.add_argument("-e", "--encrypt", action="store_true", help="Encrypt text")
-    parser.add_argument("-k", "--cryptoanalysis", action="store_true", help="Perform cryptoanalysis")
-
-    args = parser.parse_args()
-
-    if args.prepare:
-        prepare_text("orig.txt", "plain.txt", args.prepare)
-    elif args.encrypt:
-        encrypt("plain.txt", "key.txt", "crypto.txt")
-    elif args.cryptoanalysis:
-        cryptoanalysis("crypto.txt", "decrypt.txt")
+    action = sys.argv[1]
+    if action in ("-p"):
+        prepare()
+    elif action in ("-e"):
+        encrypt()
+    elif action in ("-k"):
+        cryptoanalysis()
+    else:
+        print("Nieprawidłowy argument")
 
 if __name__ == "__main__":
     main()
