@@ -1,83 +1,66 @@
-import os
+import argparse
 
-def prepare():
-    with open("orig.txt", "r", encoding="ASCII") as orig, open("plain.txt", "w", encoding="UTF-8") as plain:
-        all_text = ""
-        for line in orig:
-            line = line.strip()
-            line = "".join(char for char in line if char.isalpha() or char.isspace())
-            line = line.lower()
-            all_text += line[:35] + "\n"
-        plain.write(all_text)
+def prepare_text(input_file, output_file, line_length):
+    with open(input_file, 'r') as f:
+        text = f.read()
+        prepared_text = ''.join(format(ord(c), '08b') for c in text)
+        prepared_lines = [prepared_text[i:i+line_length] for i in range(0, len(prepared_text), line_length)]
 
-def cryptanalysis():
-    with open("crypto.txt", "r", encoding="US-ASCII") as crypto, open("decrypt.txt", "w", encoding="US-ASCII") as decrypt:
-        lines = crypto.readlines()
-        line_length = len(lines[0].strip())
-        arr = []
-        for line in lines:
-            arr.append(bytearray(line.strip(), encoding="US-ASCII"))
-        bytes = bytearray(line_length)
-        key_bytes = bytearray(line_length)
-        for x in range(len(lines)):
-            for y in range(line_length):
-                if arr[x][y] < 58:
-                    bytes[y] = 32
-                    key_bytes[y] = arr[x][y] - bytes[y]
-        out = ""
-        for x in range(len(lines)):
-            line = bytearray(line_length)
-            for y in range(line_length):
-                arr[x][y] -= key_bytes[y]
-                if 33 < arr[x][y] < 97:
-                    arr[x][y] += 25
-                line[y] = arr[x][y]
-            out += line.decode("US-ASCII") + "\n"
-        decrypt.write(out)
+        with open(output_file, 'w') as output:
+            for line in prepared_lines:
+                output.write(line + '\n')
+    print("Text prepared successfully.")
 
+def encrypt(input_file, key_file, output_file):
+    with open(input_file, 'r') as f:
+        plain_text = f.read()
+    with open(key_file, 'r') as f:
+        key = f.read()
 
-def asciikey():
-    try:
-        with open("key.txt", "r", encoding="ASCII") as key_file:
-            key = key_file.readline().strip()
-            bytes = bytearray(key, encoding="US-ASCII")
-            for i in range(len(key)):
-                bytes[i] -= 97
-            return bytes
-    except FileNotFoundError:
-        print("No key file found")
-    except IOError:
-        print("I/O problem")
-    return None
+    encrypted_text = ''.join(chr(ord(plain_text[i]) ^ ord(key[i % len(key)])) for i in range(len(plain_text)))
+    with open(output_file, 'w') as output:
+        output.write(encrypted_text)
+    print("Text encrypted successfully.")
 
-def encrypt():
-    key = asciikey()
-    with open("plain.txt", "r", encoding="US-ASCII") as plain, open("crypto.txt", "w", encoding="US-ASCII") as crypto:
-        all_text = plain.read().strip()
-        bytes = bytearray(all_text, encoding="US-ASCII")
-        z = 0
-        out = bytearray()
-        for byte in bytes:
-            if z >= len(key) - 1:
-                z = 0
-            result = byte + key[z]
-            z += 1
-            if result > 122:
-                result -= 25
-            if byte == 10:
-                result = 10
-                z = 0
-            out.append(result)
-        crypto.write(out.decode("US-ASCII"))
+def cryptoanalysis(crypto_file, output_file):
+    with open(crypto_file, 'r') as f:
+        crypto_text = f.readlines()
 
-def main(args):
-    if args[0] == "-p":
-        prepare()
-    elif args[0] == "-e":
-        encrypt()
-    elif args[0] == "-k":
-        cryptanalysis()
+    space_positions = []
+    for i in range(len(crypto_text[0])):
+        count_ones = sum(1 for line in crypto_text if line[i] == '1')
+        if count_ones > len(crypto_text) / 2:
+            space_positions.append(i)
+
+    decrypted_text = []
+    for line in crypto_text:
+        decrypted_line = ''
+        for i in range(len(line)):
+            if i in space_positions:
+                decrypted_line += ' '
+            else:
+                decrypted_line += '_'
+        decrypted_text.append(decrypted_line)
+
+    with open(output_file, 'w') as output:
+        for line in decrypted_text:
+            output.write(line + '\n')
+    print("Cryptoanalysis completed successfully.")
+
+def main():
+    parser = argparse.ArgumentParser(description="XOR encryption and cryptoanalysis tool")
+    parser.add_argument("-p", "--prepare", metavar="line_length", type=int, default=64, help="Prepare text for encryption")
+    parser.add_argument("-e", "--encrypt", action="store_true", help="Encrypt text")
+    parser.add_argument("-k", "--cryptoanalysis", action="store_true", help="Perform cryptoanalysis")
+
+    args = parser.parse_args()
+
+    if args.prepare:
+        prepare_text("orig.txt", "plain.txt", args.prepare)
+    elif args.encrypt:
+        encrypt("plain.txt", "key.txt", "crypto.txt")
+    elif args.cryptoanalysis:
+        cryptoanalysis("crypto.txt", "decrypt.txt")
 
 if __name__ == "__main__":
-    import sys
-    main(sys.argv[1:])
+    main()
