@@ -1,4 +1,3 @@
-#Dawid Kalinowski
 import sys
 import random
 
