@@ -1,103 +1,148 @@
+#Dawid Kalinowski
+import random
 import sys
-from typing import List
+
+line_len = 64
+
+
+def BinaryToDecimal(binary):
+    binary1 = binary
+    decimal, i, n = 0, 0, 0
+    while binary != 0:
+        dec = binary % 10
+        decimal = decimal + dec * pow(2, i)
+        binary = binary // 10
+        i += 1
+    return decimal
 
 
 def prepare():
-    with open("orig.txt", 'r') as orig:
-        text = orig.read().replace('\n', ' ').strip().lower()
-        text = ''.join(char for char in text if char.isalpha() or char == ' ')
-        with open("plain.txt", 'w') as plain:
-            for i in range(0, len(text), 64):
-                line = text[i:i+64]
-                if len(line) < 64:
-                    line += 'a' * (64 - len(line))
-                plain.write(line + '\n')
-    print("Przygotowano tekst.")
+    with open("orig.txt", "r") as f:
+        orig = f.read()
+        orig = orig.upper()
+        orig = orig.replace("\n", " ")
+    line = ""
+    with open("plain.txt", "w") as f:
+        for index, ch in enumerate(orig):
+            line += ch
+            if (index + 1) % line_len == 0 and index != 0:
+                line += "\n"
+                f.write(line)
+                line = ""
+
+        if len(line) > 0:
+            while len(line) != line_len:
+                line += "Z"
+        line += "\n"
+        f.write(line)
+    return True
 
 
-def encrypt(block_size: int = 64) -> None:
-    with open("plain.txt", "r") as file_plain:
-        plaintext = [line.rstrip("\n") for line in file_plain.readlines()]
-        
-    with open("key.txt", "r") as file_key:
-        key = file_key.read()
-        
-    with open("crypto.txt", "w") as file_crypto:
-        for line in plaintext:
-            for i in range(block_size):
-                file_crypto.write(chr(ord(line[i]) ^ ord(key[i])))
-    print("Zaszyfrowano tekst.")
+def generate_key():
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    with open("key.txt", "w") as f:
+        for x in range(0, line_len):
+            ch = random.randint(0, len(alphabet) - 1)
+            f.write(alphabet[ch])
+    return True
 
 
+def code():
+    with open("plain.txt", "r") as f:
+        plain = f.read()
+        plain = plain.replace("\n", "8")
+        plain = plain.split("8")
 
-def crypto(lines: List[str]) -> List[str]:
-    columns = [[line[i] for line in lines] for i in range(len(lines[0]))]
-    decrypted_columns = []
+    with open("key.txt", "r") as f:
+        key = f.read()
+        key = ' '.join(format(ord(i), 'b') for i in key)
+        key = key.split(" ")
+        for i in range(len(key)):
+            while len(key[i]) != 8:
+                key[i] = "0" + key[i]
+        key = ''.join(format(x) for x in key)
 
-    for col in columns:
-        line = ["" for _ in range(len(col))]
-        differences = [ord(col[i]) ^ ord(col[i+1]) for i in range(len(col)-1)]
+    with open("crypto.txt", "w") as f:
+        pass
 
-        i = 0
-        while i <= len(differences):
-            try:
-                if differences[i] >> 5 == 0 and differences[i+1] >> 5 == 2 and differences[i+2] >> 5 == 2:
-                    line[i] = chr(differences[i] ^ differences[i+1] ^ 0b00100000)
-                    line[i+1] = chr(0b00100000 ^ differences[i+1])
-                    line[i+2] = chr(0b00100000 ^ differences[i+2])
-                    i += 3
-                elif differences[i] >> 5 == 2 and differences[i+1] >> 5 == 2 and differences[i+2] >> 5 == 0 and i < len(line) - 2:
-                    line[i] = chr(0b00100000 ^ differences[i])
-                    line[i+1] = chr(0b00100000)
-                    line[i+2] = chr(0b00100000 ^ differences[i+1])
-                    i += 3
-                elif differences[i] == differences[i+2] and differences[i] >> 5 == 0 and differences[i+1] >> 5 == 2:
-                    line[i] = chr(0b00100000)
-                    line[i+1] = chr(differences[i+1] ^ 0b00100000)
-                    line[i+2] = chr(0b00100000)
-                    i += 3
-                elif differences[i] >> 5 == 0 and differences[i+1] >> 5 == 2 and differences[i+2] >> 5 == 0:
-                    line[i] = chr(differences[i] ^ differences[i+1] ^ 0b00100000)
-                    line[i+1] = chr(0b00100000 ^ differences[i+1])
-                    line[i+2] = chr(0b00100000)
-                    i += 3
-                elif differences[i] >> 5 == 2 and differences[i+1] >> 5 == 0 and differences[i+2] >> 5 == 0:
-                    line[i] = chr(0b00100000)
-                    line[i+1] = chr(differences[i] ^ 0b00100000)
-                    line[i+2] = chr(differences[i+1] ^ differences[i] ^ 0b00100000)
-                    i += 1
+    for l in range(len(plain)):
+        new_line = ""
+        coded_line = ""
+        line = ' '.join(format(ord(i), 'b') for i in plain[l])
+        line = line.split(" ")
+        for i in range(len(line)):
+            while len(line[i]) != 8:
+                line[i] = "0" + line[i]
+        line = ''.join(format(x) for x in line)
+        if line != "00000000":
+            for i in range(len(line)):
+                result = int(line[i]) ^ int(key[i])
+
+                if result:
+                    coded_line += "1"
                 else:
-                    line[i] = "_"
-                    i += 1
-            except IndexError:
-                line[i] = "_"
-                i += 1
-
-        decrypted_columns.append("".join(line))
-
-    decrypted_lines = ["".join([col[i] for col in decrypted_columns]) for i in range(len(decrypted_columns[0]))]
-    return decrypted_lines
+                    coded_line += "0"
+                new_line = new_line + str(result)
+            with open("crypto.txt", "a") as f:
+                f.write(new_line + '\n')
+    return True
 
 
-def cryptoanalysis(block_size: int = 64) -> None:
+def krypto_analysis():
     with open("crypto.txt", "r") as f:
-        crypto_text = f.read()
-    blocks = [crypto_text[i:i+block_size] for i in range(0, len(crypto_text), block_size)]
+        text = f.read()
+        text = text.replace("\n", "*")
+        text = text.split("*")
+        text.pop(len(text)-1)
+
+    for index, line in enumerate(text):
+        output = [line[i:i+8] for i in range(0, len(line), 8)]
+        text[index] = output
+
+    for row_index, row in enumerate(text):
+        for column_index, column in enumerate(row):
+            reset_char = False
+            if len(column) > 1:
+                if column[1] == "1":
+                    reset_char = column
+                if reset_char:
+                    for i in range(len(text)):
+                        coded_char = text[i][column_index]
+                        coded_line = ""
+                        for j in range(8):
+                            result = int(coded_char[j]) ^ int(reset_char[j])
+                            if result:
+                                coded_line += "1"
+                            else:
+                                coded_line += "0"
+                        if coded_line == "00000000":
+                            text[i][column_index] = " "
+                        else:
+                            text[i][column_index] = chr(int(coded_line, 2))
+
     with open("decrypt.txt", "w") as f:
-        f.write("\n".join(crypto(blocks)))
-    print("Kryptoanaliza wykonana.")
+        for row in text:
+            for column in row:
+                f.write(column)
+            f.write("\n")
+    return True
 
 
-def main():
-    action = sys.argv[1]
-    if action in ("-p"):
-        prepare()
-    elif action in ("-e"):
-        encrypt()
-    elif action in ("-k"):
-        cryptoanalysis()
-    else:
-        print("Nieprawidłowy argument")
+s1 = sys.argv[1]
+todo = False
 
-if __name__ == "__main__":
-    main()
+if s1 in ["-p", "p"]:
+    todo = prepare
+elif s1 in ["-e", "e"]:
+    todo = code
+elif s1 in ["-g", "g"]:
+    todo = generate_key
+elif s1 in ["-k", "k"]:
+    todo = krypto_analysis
+else:
+    print("Wrong parameter: {}".format(s1))
+
+if todo():
+    print("Done")
+else:
+    print("ERROR !!!")
