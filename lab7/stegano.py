@@ -1,4 +1,3 @@
-#Dawid Kalinowski
 from argparse import ArgumentParser
 from os import PathLike
 from pathlib import Path
@@ -88,14 +87,12 @@ class Steganography:
         binary_hash = ""
         for i in range(self.KEY_LENGTH):
             line = watermark_html[i].replace("\n", "")
-            if line:
-                if line[-1] == " ":
-                    binary_hash += "1"
-                else:
-                    binary_hash += "0"
+            if line and line[-1] == " ":
+                binary_hash += "1"
+            else:
+                binary_hash += "0"
         hex_hash = self.binary_to_base16(binary_hash)
         self.save_file(hex_hash, self.detect_file)
-
 
     def encrypt_2(self):
         message = self.read_file(self.message_file)
